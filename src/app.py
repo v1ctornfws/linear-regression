@@ -158,24 +158,21 @@ if uploaded_file is not None:
             model = LinearRegressionModel()
             model.train(X, y)
 
-            # Guardar el modelo
-            with open("modelo_regresion.pkl", "wb") as file:
-                pickle.dump(model, file)
+            # Guardar el modelo...
 
-            # Calcular y mostrar R^2
+            # **********************************************
+            # Llama al nuevo método score()
             r_squared = model.score(X, y)
-            st.success("✅ ¡Modelo entrenado exitosamente!")
+            # **********************************************
 
-            # Muestra los coeficientes y R^2
-            st.info(
-                f"**Ecuación de Regresión:** $Y = {model.slope:.2f}X + {model.intercept:.2f}$"
-            )
+            st.success("¡Modelo entrenado exitosamente!")
+
+            # Muestra el resultado
             st.info(f"**R² (Coeficiente de Determinación):** {r_squared:.4f}")
 
-            # Mostrar gráfica con st.pyplot()
-            st.subheader("Visualización del Modelo")
+            # Muestra la gráfica
             fig = model.plot_regression(X, y, feature_column, target_column)
-            st.pyplot(fig)
+            st.pyplot(fig)  # st.pyplot() debe estar en app.py, no en la clase
 
     if os.path.exists("modelo_regresion.pkl"):
         with st.form("form_prediccion"):
