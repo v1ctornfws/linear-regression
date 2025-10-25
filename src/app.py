@@ -74,13 +74,25 @@ class LinearRegressionModel:
 
 
 def load_data(uploaded_file):
-    """Carga los datos desde un archivo CSV."""
-    # Intentar leer el CSV con coma, luego con punto y coma
+
+    # 1. Intentar con UTF-8 (el estándar moderno)
     try:
-        data = pd.read_csv(uploaded_file, encoding="latin1")
-    except:
-        uploaded_file.seek(0)  # reset file pointer
-        data = pd.read_csv(uploaded_file, sep=";", encoding="latin1")
+        data = pd.read_csv(uploaded_file, encoding="utf-8")
+    except UnicodeDecodeError:
+
+        # 2. Si falla UTF-8, resetear y probar con LATIN-1 (el más común para español)
+        uploaded_file.seek(0)  # Esto es crucial: resetea el puntero
+        try:
+            data = pd.read_csv(uploaded_file, encoding="latin-1")
+        except:
+            # 3. Si falla LATIN-1, resetear y probar con delimitador ';' (común en Excel)
+            uploaded_file.seek(0)
+            try:
+                data = pd.read_csv(uploaded_file, encoding="latin-1", sep=";")
+            except:
+                # Si todo falla, intentar con la codificación que Windows usa a menudo
+                uploaded_file.seek(0)
+                data = pd.read_csv(uploaded_file, encoding="cp1252", sep=";")
 
     # Intenta convertir las columnas a numéricas, forzando errores a NaN
     for col in data.columns:
@@ -89,6 +101,7 @@ def load_data(uploaded_file):
     # Eliminar filas con NaN que resultaron de la conversión forzada
     data.dropna(inplace=True)
     return data
+
 
 # Configuración de la página
 st.set_page_config(
