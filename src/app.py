@@ -52,3 +52,16 @@ if uploaded_file is not None:
                 loaded_model = pickle.load(file)
             prediction = loaded_model.predict([[input_value]])
             st.write(f"Predicción: {prediction[0]:.2f}")
+
+if st.button("Entrenar modelo"):
+    X = data[feature_column].values.reshape(-1, 1)
+    y = data[target_column].values
+    model = LinearRegressionModel()
+    model.train(X, y)
+    r_squared = model.score(X, y)
+    with open("modelo_regresion.pkl", "wb") as file:
+        pickle.dump(model, file)
+    st.success("¡Modelo entrenado exitosamente!")
+    st.info(f"R² (Coeficiente de Determinación): {r_squared:.4f}")
+
+    model.plot_regression(X, y, feature_column, target_column)
