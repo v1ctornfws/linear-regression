@@ -222,7 +222,8 @@ if uploaded_file is not None:
                         f"Ingresa un valor para **{feature_column}** (Rango: {min_val:.2f} a {max_val:.2f})",
                         min_value=float(min_val),
                         max_value=float(max_val),
-                        value=float(np.mean(data[feature_column])),
+                        # CAMBIO: Usamos el valor mínimo como valor inicial por defecto
+                        value=float(min_val),
                         key="input_predict",
                     )
 
