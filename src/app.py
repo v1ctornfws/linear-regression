@@ -5,61 +5,59 @@ import pickle
 import os
 import matplotlib.pyplot as plt
 
+# Importamos la implementación de regresión lineal de Scikit-learn
+from sklearn.linear_model import LinearRegression
+
 
 class LinearRegressionModel:
-    """Clase de modelo de Regresión Lineal con implementacion basica para este demo."""
+    """Clase de modelo de Regresión Lineal usando Scikit-learn."""
 
     def __init__(self):
-        self.slope = 0.0
-        self.intercept = 0.0
+        # Usamos el modelo robusto de sklearn
+        self.model = LinearRegression()
 
     def train(self, X, y):
-        # Implementación simple de mínimos cuadrados
-        X_mean = np.mean(X)
-        y_mean = np.mean(y)
-
-        numerator = np.sum((X - X_mean) * (y - y_mean))
-        denominator = np.sum((X - X_mean) ** 2)
-
-        # Evitar división por cero
-        if denominator != 0:
-            self.slope = numerator / denominator
-        else:
-            self.slope = 0.0
-
-        self.intercept = y_mean - (self.slope * X_mean)
+        # El método fit de sklearn maneja las dimensiones 2D de X
+        self.model.fit(X, y)
 
     def predict(self, X):
-        return self.slope * X.flatten() + self.intercept
+        # El método predict de sklearn devuelve las predicciones
+        return self.model.predict(X)
 
     def score(self, X, y):
-        """Calcula el coeficiente R^2."""
-        y_pred = self.predict(X)
-        ss_res = np.sum((y - y_pred) ** 2)
-        ss_tot = np.sum((y - np.mean(y)) ** 2)
-        # Evitar división por cero
-        if ss_tot == 0:
-            return 0.0
-        return 1 - (ss_res / ss_tot)
+        """Calcula el coeficiente R^2 usando el método incorporado de sklearn."""
+        # El método score de sklearn devuelve directamente el R^2
+        return self.model.score(X, y)
 
     def plot_regression(self, X, y, feature_name, target_name):
         """Genera y devuelve la figura de Matplotlib."""
+        # Aseguramos que X sea 1D para los ejes de la gráfica
+        X_flat = X.flatten()
+
         fig, ax = plt.subplots(figsize=(10, 6))
 
         # 1. Graficar los puntos de datos (Scatter Plot)
-        ax.scatter(X, y, color="blue", label="Datos reales")
+        ax.scatter(X_flat, y, color="blue", label="Datos reales", alpha=0.6)
 
         # 2. Generar predicciones para la línea
         # Creamos un rango de X para dibujar la línea suave
-        X_fit = np.linspace(X.min() * 0.9, X.max() * 1.1, 100).reshape(-1, 1)
+        # Usamos X_flat para calcular los límites
+        X_min = X_flat.min()
+        X_max = X_flat.max()
+        X_fit = np.linspace(X_min * 0.9, X_max * 1.1, 100).reshape(-1, 1)
         y_fit = self.predict(X_fit)
+
+        # Obtenemos los coeficientes para la leyenda
+        slope = self.model.coef_[0]
+        intercept = self.model.intercept_
 
         # 3. Graficar la línea de regresión
         ax.plot(
-            X_fit,
+            X_fit.flatten(),
             y_fit,
             color="red",
-            label=f"Línea de Regresión (m={self.slope:.2f}, b={self.intercept:.2f})",
+            linewidth=2,
+            label=f"Línea de Regresión (m={slope:.2f}, b={intercept:.2f})",
         )
 
         # Configurar la gráfica
@@ -67,7 +65,7 @@ class LinearRegressionModel:
         ax.set_xlabel(feature_name)
         ax.set_ylabel(target_name)
         ax.legend()
-        ax.grid(True)
+        ax.grid(True, linestyle="--", alpha=0.7)
 
         # Devolver la figura
         return fig
@@ -75,27 +73,36 @@ class LinearRegressionModel:
 
 def load_data(uploaded_file):
 
-    # 1. Intentar con UTF-8 (el estándar moderno)
-    try:
-        data = pd.read_csv(uploaded_file, encoding="utf-8")
-    except UnicodeDecodeError:
+    # Intenta cargar el archivo usando diferentes codificaciones
+    encodings_to_try = ["utf-8", "latin-1", "cp1252"]
+    data = None
 
-        # 2. Si falla UTF-8, resetear y probar con LATIN-1 (el más común para español)
-        uploaded_file.seek(0)  # Esto es crucial: resetea el puntero
+    for encoding in encodings_to_try:
         try:
-            data = pd.read_csv(uploaded_file, encoding="latin-1")
-        except:
-            # 3. Si falla LATIN-1, resetear y probar con delimitador ';' (común en Excel)
+            # Intentar primero con el delimitador estándar (,)
             uploaded_file.seek(0)
-            try:
-                data = pd.read_csv(uploaded_file, encoding="latin-1", sep=";")
-            except:
-                # Si todo falla, intentar con la codificación que Windows usa a menudo
-                uploaded_file.seek(0)
-                data = pd.read_csv(uploaded_file, encoding="cp1252", sep=";")
+            data = pd.read_csv(uploaded_file, encoding=encoding)
 
-    # Intenta convertir las columnas a numéricas, forzando errores a NaN
+            # Verificar si se necesita el delimitador punto y coma (;)
+            if len(data.columns) <= 1 and encoding != "cp1252":
+                # Si solo hay una columna, probamos con punto y coma (;)
+                uploaded_file.seek(0)
+                data = pd.read_csv(uploaded_file, encoding=encoding, sep=";")
+
+            if len(data.columns) > 1:
+                break  # Éxito en la carga
+        except Exception:
+            data = None
+
+    if data is None:
+        st.error(
+            "Error al cargar el archivo. Asegúrate de que el formato sea CSV (separado por comas o punto y coma) y la codificación sea compatible."
+        )
+        return pd.DataFrame()  # Devolver un DataFrame vacío
+
+    # Limpieza y conversión a numérico
     for col in data.columns:
+        # Convertir a numérico, forzando errores a NaN
         data[col] = pd.to_numeric(data[col], errors="coerce")
 
     # Eliminar filas con NaN que resultaron de la conversión forzada
@@ -117,80 +124,117 @@ uploaded_file = st.file_uploader("Sube tu archivo CSV", type=["csv"])
 
 if uploaded_file is not None:
     data = load_data(uploaded_file)
-    st.subheader("Datos Cargados")
 
-    # Vista previa de datos cargados
-    st.write("Vista previa de los datos:")
-    st.dataframe(data.head(10))  # Usamos st.dataframe para una mejor visualización
+    if data.empty:
+        st.warning("No hay datos numéricos válidos para el análisis.")
+    else:
+        st.subheader("Datos Cargados")
 
-    # ------------------------------------------------------------------
-    ## 2. Selección de Variables (Corregido con 'key')
-    # ------------------------------------------------------------------
-    col1, col2 = st.columns(2)
+        # Vista previa de datos cargados
+        st.write("Vista previa de los datos:")
+        st.dataframe(data.head(10))
 
-    with col1:
-        feature_column = st.selectbox(
-            "Selecciona la variable independiente (X)",
-            data.columns,
-            key="feature_select",  # Clave única para evitar StreamlitDuplicateElementId
-        )
-    with col2:
-        target_column = st.selectbox(
-            "Selecciona la variable dependiente (Y)",
-            data.columns,
-            key="target_select",  # Clave única para evitar StreamlitDuplicateElementId
-        )
-
-    # ------------------------------------------------------------------
-    ## 3. Entrenamiento del Modelo (Corregido con 'st.form')
-    # ------------------------------------------------------------------
-    with st.form("form_entrenamiento"):
-        st.subheader("Entrenamiento del Modelo")
-
-        # Usamos st.form_submit_button para aislar el ID del botón
-        submit_train = st.form_submit_button("Entrenar modelo y Mostrar Resultados")
-
-        if submit_train:
-            # Reestructurar los datos para el modelo (X debe ser 2D)
-            X = data[feature_column].values.reshape(-1, 1)
-            y = data[target_column].values
-
-            model = LinearRegressionModel()
-            model.train(X, y)
-
-            # Guardar el modelo...
-
-            # **********************************************
-            # Llama al nuevo método score()
-            r_squared = model.score(X, y)
-            # **********************************************
-
-            st.success("¡Modelo entrenado exitosamente!")
-
-            # Muestra el resultado
-            st.info(f"**R² (Coeficiente de Determinación):** {r_squared:.4f}")
-
-            # Muestra la gráfica
-            fig = model.plot_regression(X, y, feature_column, target_column)
-            st.pyplot(fig)  # st.pyplot() debe estar en app.py, no en la clase
-
-    if os.path.exists("modelo_regresion.pkl"):
-        with st.form("form_prediccion"):
-            st.subheader("Hacer Predicciones")
-
-            # Añadir una clave al number_input por seguridad
-            input_value = st.number_input(
-                f"Ingresa un valor para **{feature_column}**", key="input_predict"
+        # ------------------------------------------------------------------
+        ## 2. Selección de Variables
+        # ------------------------------------------------------------------
+        col_list = data.columns.tolist()
+        if len(col_list) < 2:
+            st.error(
+                "Se necesitan al menos dos columnas numéricas para realizar la regresión."
             )
+        else:
+            col1, col2 = st.columns(2)
 
-            # Botón de predicción dentro de su propio formulario
-            submit_predict = st.form_submit_button("Predecir")
+            with col1:
+                feature_column = st.selectbox(
+                    "Selecciona la variable independiente (X)",
+                    col_list,
+                    index=0,
+                    key="feature_select",
+                )
+            with col2:
+                # Asegura que la variable Y no sea la misma que X por defecto
+                default_target_index = (
+                    1 if len(col_list) > 1 and feature_column == col_list[0] else 0
+                )
+                target_column = st.selectbox(
+                    "Selecciona la variable dependiente (Y)",
+                    col_list,
+                    index=default_target_index,
+                    key="target_select",
+                )
 
-            if submit_predict:
-                with open("modelo_regresion.pkl", "rb") as file:
-                    loaded_model = pickle.load(file)
+            # ------------------------------------------------------------------
+            ## 3. Entrenamiento del Modelo
+            # ------------------------------------------------------------------
+            with st.form("form_entrenamiento"):
+                st.subheader("Entrenamiento del Modelo")
 
-                # La predicción espera un array 2D
-                prediction = loaded_model.predict(np.array([[input_value]]))
+                submit_train = st.form_submit_button(
+                    "Entrenar modelo y Mostrar Resultados"
+                )
 
-                st.metric(f"Predicción de {target_column}", f"{prediction[0]:.2f}")
+                if submit_train and feature_column != target_column:
+                    # Reestructurar los datos para el modelo (X debe ser 2D)
+                    # **ESTO ES CLAVE: ASEGURA LA FORMA (N, 1)**
+                    X = data[feature_column].values.reshape(-1, 1)
+                    y = data[target_column].values
+
+                    model = LinearRegressionModel()
+                    model.train(X, y)
+
+                    # Guardar el modelo (Asegúrate de que el modelo sea el objeto de sklearn)
+                    with open("modelo_regresion.pkl", "wb") as file:
+                        # Guardamos el objeto self.model (que es la instancia de sklearn)
+                        pickle.dump(model.model, file)
+
+                    # Llama al método score()
+                    r_squared = model.score(X, y)
+
+                    st.success("¡Modelo entrenado exitosamente!")
+
+                    # Muestra los coeficientes para el debugging visual
+                    st.info(f"**R² (Coeficiente de Determinación):** {r_squared:.4f}")
+                    st.write(f"**Pendiente (m):** {model.model.coef_[0]:.4f}")
+                    st.write(f"**Intercepto (b):** {model.model.intercept_:.4f}")
+
+                    # Muestra la gráfica
+                    fig = model.plot_regression(X, y, feature_column, target_column)
+                    st.pyplot(fig)
+
+                elif submit_train and feature_column == target_column:
+                    st.error(
+                        "Las variables independiente y dependiente no pueden ser la misma."
+                    )
+
+            # ------------------------------------------------------------------
+            ## 4. Predicciones
+            # ------------------------------------------------------------------
+            if os.path.exists("modelo_regresion.pkl"):
+                with st.form("form_prediccion"):
+                    st.subheader("Hacer Predicciones")
+
+                    # Usamos los valores min/max de la columna X para el rango de entrada
+                    min_val = data[feature_column].min()
+                    max_val = data[feature_column].max()
+
+                    input_value = st.number_input(
+                        f"Ingresa un valor para **{feature_column}** (Rango: {min_val:.2f} a {max_val:.2f})",
+                        min_value=float(min_val),
+                        max_value=float(max_val),
+                        value=float(np.mean(data[feature_column])),
+                        key="input_predict",
+                    )
+
+                    submit_predict = st.form_submit_button("Predecir")
+
+                    if submit_predict:
+                        with open("modelo_regresion.pkl", "rb") as file:
+                            loaded_model = pickle.load(file)
+
+                        # La predicción espera un array 2D
+                        prediction = loaded_model.predict(np.array([[input_value]]))
+
+                        st.metric(
+                            f"Predicción de {target_column}", f"{prediction[0]:.2f}"
+                        )
