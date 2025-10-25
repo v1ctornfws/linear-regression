@@ -3,15 +3,7 @@ import pandas as pd
 import numpy as np
 import pickle
 import os
-import matplotlib.pyplot as plt  # Necesario para st.pyplot()
-
-# Importar tus módulos (asegúrate de que existan)
-# from models.linear_regression import LinearRegressionModel
-# from utils.data_loader import load_data
-
-# *** ASUNCIONES TEMPORALES PARA QUE EL CÓDIGO CORRA COMPLETO ***
-# Si estás subiendo un archivo, DEBES tener estas funciones
-# Las defino aquí con implementaciones básicas si no tienes tus archivos listos:
+import matplotlib.pyplot as plt
 
 
 class LinearRegressionModel:
@@ -98,10 +90,6 @@ def load_data(uploaded_file):
     data.dropna(inplace=True)
     return data
 
-
-# *** FIN DE ASUNCIONES TEMPORALES ***
-
-
 # Configuración de la página
 st.set_page_config(
     page_title="Aplicaciones Web - Regresion lineal", page_icon="🧮", layout="wide"
@@ -120,7 +108,7 @@ if uploaded_file is not None:
 
     # Vista previa de datos cargados
     st.write("Vista previa de los datos:")
-    st.dataframe(data.head())  # Usamos st.dataframe para una mejor visualización
+    st.dataframe(data.head(10))  # Usamos st.dataframe para una mejor visualización
 
     # ------------------------------------------------------------------
     ## 2. Selección de Variables (Corregido con 'key')
@@ -176,9 +164,6 @@ if uploaded_file is not None:
             fig = model.plot_regression(X, y, feature_column, target_column)
             st.pyplot(fig)
 
-    # ------------------------------------------------------------------
-    ## 4. Predicción (Corregido con 'st.form')
-    # ------------------------------------------------------------------
     if os.path.exists("modelo_regresion.pkl"):
         with st.form("form_prediccion"):
             st.subheader("Hacer Predicciones")
