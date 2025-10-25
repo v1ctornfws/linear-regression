@@ -18,7 +18,7 @@ uploaded_file = st.file_uploader("Sube tu archivo CSV", type=["csv"])
 if uploaded_file is not None:
     data = load_data(uploaded_file)
     st.write("Vista previa de los datos:")
-    st.write(data.head())
+    st.write(data)
 
     # Selección de variables
     feature_column = st.selectbox(
