@@ -52,16 +52,9 @@ if uploaded_file is not None:
                 loaded_model = pickle.load(file)
             prediction = loaded_model.predict([[input_value]])
             st.write(f"Predicción: {prediction[0]:.2f}")
+    feature_column = st.selectbox("Selecciona la variable independiente (X)", data.columns)
+    target_column = st.selectbox("Selecciona la variable dependiente (Y)", data.columns)
 
-# ... código anterior ...
-    feature_column = st.selectbox(
-        "Selecciona la variable independiente (X)", data.columns
-    )
-    target_column = st.selectbox("Selecciona la variable dependiente (Y)", data.columns)
-
-# -------------------------------------------------------------
-# NUEVA ESTRUCTURA con st.form para el entrenamiento
-# -------------------------------------------------------------
     with st.form("form_entrenamiento"):
         st.subheader("Entrenamiento del Modelo")
         
