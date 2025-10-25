@@ -53,14 +53,53 @@ if uploaded_file is not None:
             prediction = loaded_model.predict([[input_value]])
             st.write(f"Predicción: {prediction[0]:.2f}")
 
-    if st.button("Entrenar modelo"):
-        X = data[feature_column].values.reshape(-1, 1)
-        y = data[target_column].values
-        model = LinearRegressionModel()
-        model.train(X, y)
-        r_squared = model.score(X, y)
-        with open("modelo_regresion.pkl", "wb") as file:
-            pickle.dump(model, file)
-        st.success("¡Modelo entrenado exitosamente!")
-        st.info(f"R² (Coeficiente de Determinación): {r_squared:.4f}")
-        model.plot_regression(X, y, feature_column, target_column)
+# ... código anterior ...
+    feature_column = st.selectbox(
+        "Selecciona la variable independiente (X)", data.columns
+    )
+    target_column = st.selectbox("Selecciona la variable dependiente (Y)", data.columns)
+
+# -------------------------------------------------------------
+# NUEVA ESTRUCTURA con st.form para el entrenamiento
+# -------------------------------------------------------------
+    with st.form("form_entrenamiento"):
+        st.subheader("Entrenamiento del Modelo")
+        
+        # El botón de entrenamiento ahora está DENTRO del formulario
+        submit_train = st.form_submit_button("Entrenar modelo")
+
+        if submit_train:
+            X = data[feature_column].values.reshape(-1, 1)
+            y = data[target_column].values
+
+            model = LinearRegressionModel()
+            model.train(X, y)
+
+            # Guardar el modelo
+            with open("modelo_regresion.pkl", "wb") as file:
+                pickle.dump(model, file)
+
+            # Calcular R^2
+            r_squared = model.score(X, y) 
+
+            st.success("¡Modelo entrenado exitosamente!")
+            st.info(f"R² (Coeficiente de Determinación): {r_squared:.4f}")
+
+            # Mostrar gráfica (asumiendo que devuelve una figura)
+            fig = model.plot_regression(X, y, feature_column, target_column)
+            st.pyplot(fig)
+
+    if os.path.exists("modelo_regresion.pkl"):
+        with st.form("form_prediccion"):
+            st.subheader("Hacer predicciones")
+            input_value = st.number_input("Ingresa un valor para predecir")
+            
+            # El botón de predicción ahora está DENTRO del formulario
+            submit_predict = st.form_submit_button("Predecir")
+            
+            if submit_predict:
+                with open("modelo_regresion.pkl", "rb") as file:
+                    loaded_model = pickle.load(file)
+                
+                prediction = loaded_model.predict([[input_value]])
+                st.write(f"Predicción: {prediction[0]:.2f}")
